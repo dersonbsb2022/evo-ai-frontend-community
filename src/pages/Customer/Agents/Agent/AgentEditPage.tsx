@@ -18,6 +18,7 @@ import { TaskConfigData } from '@/components/ai_agents/Forms/TaskConfigForm';
 import SubAgentsForm, { SubAgentsData } from '@/components/ai_agents/Forms/SubAgentsForm';
 import { ApiKey } from '@/types/agents';
 import integrationService from '@/services/agents/integrationService';
+import { ExternalAgentConfigData } from '@/components/agents/ExternalAgentConfig';
 import { CustomTool } from '@/types/ai';
 import { MCPServerConfig } from '@/types/ai';
 import { pipelinesService } from '@/services/pipelines/pipelinesService';
@@ -85,8 +86,7 @@ const AgentEditPage = () => {
   const [llmConfigData, setLLMConfigData] = useState<LLMConfigData | null>(null);
   const [a2aConfigData, setA2AConfigData] = useState<A2AConfigData | null>(null);
   const [taskConfigData, setTaskConfigData] = useState<TaskConfigData | null>(null);
-  const [externalConfigData, setExternalConfigData] = useState<{
-    provider?: string;
+  const [externalConfigData, setExternalConfigData] = useState<(ExternalAgentConfigData & {
     advanced_config?: {
       message_wait_time: number;
       message_signature: string;
@@ -95,7 +95,7 @@ const AgentEditPage = () => {
       min_segment_size: number;
       character_delay_ms: number;
     };
-  } | null>(null);
+  }) | null>(null);
   const [subAgentsData, setSubAgentsData] = useState<SubAgentsData>({ sub_agents: [] });
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
 
@@ -408,37 +408,71 @@ const AgentEditPage = () => {
           });
         } else if (agentData.type === 'external') {
           // Carregar configuração de integração externa
-          const provider = agentData.config?.provider as string;
-          let config = {
+          const provider = agentData.config?.provider as string | undefined;
+          const advanced_config = {
+            message_wait_time: agentData.config?.message_wait_time ?? 5,
+            message_signature: agentData.config?.message_signature ?? '',
+            enable_text_segmentation: agentData.config?.enable_text_segmentation ?? false,
+            max_characters_per_segment: agentData.config?.max_characters_per_segment ?? 300,
+            min_segment_size: agentData.config?.min_segment_size ?? 50,
+            character_delay_ms: agentData.config?.character_delay_ms ?? 0.05,
+          };
+
+          let config: ExternalAgentConfigData & { advanced_config: typeof advanced_config } = {
             provider: undefined,
-            advanced_config: {
-              message_wait_time: agentData.config?.message_wait_time ?? 5,
-              message_signature: agentData.config?.message_signature ?? '',
-              enable_text_segmentation: agentData.config?.enable_text_segmentation ?? false,
-              max_characters_per_segment: agentData.config?.max_characters_per_segment ?? 300,
-              min_segment_size: agentData.config?.min_segment_size ?? 50,
-              character_delay_ms: agentData.config?.character_delay_ms ?? 0.05,
-            },
+            advanced_config,
           };
 
           if (provider) {
+            config = {
+              ...config,
+              provider: provider as ExternalAgentConfigData['provider'],
+            };
+
             try {
-              await integrationService.getIntegration(id!, provider);
+              const integration = await integrationService.getIntegration(id!, provider);
+              const cfg = integration.config || {};
+
+              if (provider === 'flowise') {
+                config = {
+                  ...config,
+                  flowise_apiUrl: cfg.apiUrl || '',
+                  flowise_apiKey: cfg.apiKey || '',
+                };
+              } else if (provider === 'n8n') {
+                config = {
+                  ...config,
+                  n8n_webhookUrl: cfg.webhookUrl || '',
+                  n8n_basicAuthUser: cfg.basicAuthUser || '',
+                  n8n_basicAuthPass: cfg.basicAuthPass || '',
+                };
+              } else if (provider === 'dify') {
+                config = {
+                  ...config,
+                  dify_apiUrl: cfg.apiUrl || '',
+                  dify_apiKey: cfg.apiKey || '',
+                  dify_botType: cfg.botType || 'chatBot',
+                };
+              } else if (provider === 'openai') {
+                config = {
+                  ...config,
+                  openai_apiKey: cfg.apiKey || '',
+                  openai_botType: cfg.botType || 'assistant',
+                  openai_assistantId: cfg.assistantId || '',
+                  openai_model: cfg.model || '',
+                  openai_maxTokens: cfg.maxTokens || 500,
+                };
+              } else if (provider === 'typebot') {
+                config = {
+                  ...config,
+                  typebot_url: cfg.url || '',
+                  typebot_typebot: cfg.typebot || '',
+                  typebot_apiVersion: cfg.apiVersion || 'latest',
+                };
+              }
             } catch (error) {
               console.error('Error loading external integration:', error);
             }
-
-            config = {
-              provider: provider as any,
-              advanced_config: {
-                message_wait_time: agentData.config?.message_wait_time ?? 5,
-                message_signature: agentData.config?.message_signature ?? '',
-                enable_text_segmentation: agentData.config?.enable_text_segmentation ?? false,
-                max_characters_per_segment: agentData.config?.max_characters_per_segment ?? 300,
-                min_segment_size: agentData.config?.min_segment_size ?? 50,
-                character_delay_ms: agentData.config?.character_delay_ms ?? 0.05,
-              }
-            };
           }
 
           setExternalConfigData(config);

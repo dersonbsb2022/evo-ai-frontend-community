@@ -22,27 +22,29 @@ import {
   getAvailableTabs,
   supportsInactivityActions,
 } from '@/utils/agents';
+import { ExternalAgentConfigData } from '@/components/agents/ExternalAgentConfig';
 
 interface AdvancedSettingsData {
   planner: boolean;
 }
+
+type ExternalConfigState = ExternalAgentConfigData & {
+  advanced_config?: {
+    message_wait_time: number;
+    message_signature: string;
+    enable_text_segmentation: boolean;
+    max_characters_per_segment: number;
+    min_segment_size: number;
+    character_delay_ms: number;
+  };
+};
 
 interface ConfigurationSectionProps {
   agent: Agent;
   llmConfigData: LLMConfigData | null;
   a2aConfigData: A2AConfigData | null;
   taskConfigData: TaskConfigData | null;
-  externalConfigData?: {
-    provider?: string;
-    advanced_config?: {
-      message_wait_time: number;
-      message_signature: string;
-      enable_text_segmentation: boolean;
-      max_characters_per_segment: number;
-      min_segment_size: number;
-      character_delay_ms: number;
-    };
-  } | null;
+  externalConfigData?: ExternalConfigState | null;
   apiKeys: ApiKey[];
   outputSchema: Record<string, { type?: string; description?: string }>;
   advancedSettings: AdvancedSettingsData;
@@ -61,17 +63,7 @@ interface ConfigurationSectionProps {
   onLLMConfigChange: (data: LLMConfigData) => void;
   onA2AConfigChange: (data: A2AConfigData) => void;
   onTaskConfigChange: (data: TaskConfigData) => void;
-  onExternalConfigChange?: (data: {
-    provider?: string;
-    advanced_config?: {
-      message_wait_time: number;
-      message_signature: string;
-      enable_text_segmentation: boolean;
-      max_characters_per_segment: number;
-      min_segment_size: number;
-      character_delay_ms: number;
-    };
-  }) => void;
+  onExternalConfigChange?: (data: ExternalConfigState) => void;
   onOutputSchemaChange: (schema: Record<string, { type?: string; description?: string }>) => void;
   onAdvancedSettingsChange: (settings: AdvancedSettingsData) => void;
   onBehaviorSettingsChange: (settings: BehaviorSettings) => void;

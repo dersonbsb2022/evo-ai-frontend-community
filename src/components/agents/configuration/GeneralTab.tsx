@@ -56,8 +56,7 @@ interface GeneralTabProps {
   llmConfigData: LLMConfigData | null;
   a2aConfigData: A2AConfigData | null;
   taskConfigData: TaskConfigData | null;
-  externalConfigData?: {
-    provider?: string;
+  externalConfigData?: (ExternalAgentConfigData & {
     advanced_config?: {
       message_wait_time: number;
       message_signature: string;
@@ -66,23 +65,24 @@ interface GeneralTabProps {
       min_segment_size: number;
       character_delay_ms: number;
     };
-  } | null;
+  }) | null;
   apiKeys: ApiKey[];
   behaviorSettings: BehaviorSettings;
   onLLMConfigChange: (data: LLMConfigData) => void;
   onA2AConfigChange: (data: A2AConfigData) => void;
   onTaskConfigChange: (data: TaskConfigData) => void;
-  onExternalConfigChange?: (data: {
-    provider?: string;
-    advanced_config?: {
-      message_wait_time: number;
-      message_signature: string;
-      enable_text_segmentation: boolean;
-      max_characters_per_segment: number;
-      min_segment_size: number;
-      character_delay_ms: number;
-    };
-  }) => void;
+  onExternalConfigChange?: (
+    data: ExternalAgentConfigData & {
+      advanced_config?: {
+        message_wait_time: number;
+        message_signature: string;
+        enable_text_segmentation: boolean;
+        max_characters_per_segment: number;
+        min_segment_size: number;
+        character_delay_ms: number;
+      };
+    },
+  ) => void;
   onBehaviorSettingsChange: (settings: BehaviorSettings) => void;
   onShowTransferRulesModal: () => void;
   onShowPipelineRulesModal: () => void;
@@ -312,15 +312,16 @@ export const GeneralTab = ({
               <ExternalAgentConfig
                 mode="edit"
                 agentId={agent.id}
-                data={
-                  {
-                    provider: externalConfigData.provider as any,
-                  } as ExternalAgentConfigData
-                }
+                data={externalConfigData as ExternalAgentConfigData}
                 onChange={data => {
+                  // Preserve advanced_config from the parent while keeping
+                  // provider credentials (webhookUrl, api keys, …) returned
+                  // by ExternalAgentConfig — previously only `provider` was
+                  // forwarded, so saved n8n settings never reappeared in the UI.
                   onExternalConfigChange({
                     ...externalConfigData,
-                    provider: data.provider,
+                    ...data,
+                    advanced_config: externalConfigData.advanced_config,
                   });
                 }}
                 onValidationChange={() => {}}
